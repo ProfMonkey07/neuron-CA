@@ -17,55 +17,54 @@ class cell:
         self.state = state
         self.charge = charge
         self.position = position
-    def updatecell(neighborcoords):
+    def updatecell(self, w):
         neighbors = []
-        for item in neighborcoords:
-            pass
-        if self.state == "body":
-            c = body(neighbors)
-        elif self.state == "dendrite":
-            c = dendrite(neighbors)
+        if self.position[0] % 2 == 0:
+            neighborcoords = [(1, 0), (-1, 0), (0, 1), (1, 1), (0, -1), (1, -1)]
         else:
-            c = axon(neighbors)
+            neighborcoords = [(1, 0), (-1, 0), (-1, 1), (0, 1), (-1, -1), (0, -1)]
+        for item in neighborcoords:
+            if 0 < self.position[0] + item[0] < 10 and 0 < self.position[1] + item[1] < 10:
+                neighbors.append(w[self.position[1]][self.position[0]])
+        if self.state == "body":
+            c = self.body(neighbors)
+        elif self.state == "dendrite":
+            c = self.dendrite(neighbors)
+        elif self.state == "axon":
+            c = self.axon(neighbors)
+        else:
+            c = 0
+        print(c)
         return c
-    def body(neighbors):
+    def body(self, neighbors):
+        csum = 0
+        global threshhold
         if self.charge >= threshhold:
             return 0
-        neigborsum = 0
         for neighbor in neighbors:
             if neighbor.state == "dendrite":
-                neighborsum += neighbor.charge
-        charge = self.charge + neighborsum
+                csum += neighbor.charge
+        charge = self.charge + csum
         return charge
 
-    def dendrite(neighbors):
-        neigborsum = 0
+    def dendrite(self, neighbors):
+        csum = 0
         for neighbor in neighbors:
             if neighbor.state == "axon":
-                neighborsum += neighbor.charge
-        return neighborsum
+                csum += neighbor.charge
+        return csum
 
-    def axon(neighbors):
-        neigborsum = 0
+    def axon(self, neighbors):
+        global threshhold
+        activation = False
         for neighbor in neighbors:
             if neighbor.state == "body":
                 if neighbor.charge >= threshhold:
-                    return 1
-                else:
-                    return 0
-
-neighborcoords = [(-2, 0), (2, 2), (-1, -1), (-1, 1), (1, 1), (1, -1)]
-world = []
-nextworld = []
-for i in range(10):
-    row = []
-    if i % 2 == 0:
-        for x in range(10):
-            row.append(cell("body", 5, (x*2, i)))
-    else:
-        for x in range(10):
-            row.append(cell("body", 5, (x*2 + 1, i)))
-    world.append(row)
+                    activation = True
+        if activation:
+            return 5
+        else:
+            return 0
 
 #set hex center screen coordinates and define a drawing function for each
 pygame.init()
@@ -78,26 +77,51 @@ screen = pygame.display.set_mode((width, height))
  
 
 def drawhex(co, state, charge):
-    col = [0, 0, 0]
+    r, g, b = 0, 0, 0   # NOTE: is this the correct order?
+    brightness = charge*20 + 55
     if state == "dendrite":
-        col[0] = 55 + charge*20
+        r = brightness
     elif state == "body":
-        col[1] = 55 + charge*20
+        g = brightness
     elif state == "axon":
-        col[2] = 55 + charge*20
-    pygame.draw.polygon(screen, (col[0], col[1], col[2]), [(50 + co[0], 0 + co[1]), (25 + co[0], 12.5 + co[1]), (25 + co[0], 37.5 + co[1]), (50 + co[0], 50 + co[1]), (75 + co[0], 37.5 + co[1]), (75 + co[0], 12.5 + co[1])])
+        b = brightness
+    x, y = co
+    coords = [
+        (2*x + 50, y +  0  ), 
+        (2*x + 25, y + 12.5), 
+        (2*x + 25, y + 37.5), 
+        (2*x + 50, y + 50), 
+        (2*x + 75, y + 37.5), 
+        (2*x + 75, y + 12.5)]
+    pygame.draw.polygon(screen, (r, g, b), coords)
 # Game loop.
+world = []
+nextworld = []
+for i in range(10):
+    row = []
+    for x in range(10):
+        row.append(cell(["void", "body", "dendrite", "axon"][random.randrange(0, 4)], random.randrange(0, 10), (x, i)))
+    world.append(row)
+
 while True:
-    screen.fill((0, 0, 0))
+    nextworld = []
+    screen.fill((255, 255, 255))
   
     for event in pygame.event.get():
-        print(event.type)
-  
+        pass
+    for row in world:
+        nr = []
+        for item in row:
+            nr.append(cell(item.state, item.updatecell(world), item.position))
+        nextworld.append(nr)
+    world = nextworld
   # Update.
   
   # Draw.
     for row in world:
         for h in row:
-            drawhex((h.position[0]*25, h.position[1]*37.4), ["body", "axon", "dendrite"][random.randrange(0, 3)], random.randrange(0, 10))
+            print(h.position, h.charge)
+            S = h.position[0] % 2
+            drawhex(((h.position[1] + .5*S)*25, h.position[0]*37.4), h.state, h.charge)
     pygame.display.flip()
     fpsClock.tick(fps)
