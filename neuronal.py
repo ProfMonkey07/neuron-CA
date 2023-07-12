@@ -25,7 +25,7 @@ class cell:
             neighborcoords = [(1, 0), (-1, 0), (-1, 1), (0, 1), (-1, -1), (0, -1)]
         for item in neighborcoords:
             if 0 < self.position[0] + item[0] < 10 and 0 < self.position[1] + item[1] < 10:
-                neighbors.append(w[self.position[1]][self.position[0]])
+                neighbors.append(w[self.position[1] + item[1]][self.position[0] + item[0]])
         if self.state == "body":
             c = self.body(neighbors)
         elif self.state == "dendrite":
@@ -34,7 +34,6 @@ class cell:
             c = self.axon(neighbors)
         else:
             c = 0
-        print(c)
         return c
     def body(self, neighbors):
         csum = 0
@@ -51,6 +50,7 @@ class cell:
         csum = 0
         for neighbor in neighbors:
             if neighbor.state == "axon":
+                print("axon")
                 csum += neighbor.charge
         return csum
 
@@ -62,7 +62,7 @@ class cell:
                 if neighbor.charge >= threshhold:
                     activation = True
         if activation:
-            return 5
+            return 2
         else:
             return 0
 
@@ -78,13 +78,15 @@ screen = pygame.display.set_mode((width, height))
 
 def drawhex(co, state, charge):
     r, g, b = 0, 0, 0   # NOTE: is this the correct order?
-    brightness = charge*20 + 55
+    brightness = charge*5 + 55
     if state == "dendrite":
         r = brightness
     elif state == "body":
         g = brightness
     elif state == "axon":
         b = brightness
+    else:
+        r, g, b = 100, 100, 100
     x, y = co
     coords = [
         (2*x + 50, y +  0  ), 
@@ -102,26 +104,30 @@ for i in range(10):
     for x in range(10):
         row.append(cell(["void", "body", "dendrite", "axon"][random.randrange(0, 4)], random.randrange(0, 10), (x, i)))
     world.append(row)
-
 while True:
+    chargesum = 0
     nextworld = []
     screen.fill((255, 255, 255))
-  
+
+    for row in world:
+        for h in row:
+            S = h.position[0] % 2
+            drawhex(((h.position[1] + .5*S)*25, h.position[0]*37.4), h.state, h.charge)
+
     for event in pygame.event.get():
         pass
     for row in world:
         nr = []
         for item in row:
-            nr.append(cell(item.state, item.updatecell(world), item.position))
+            updatedcharge = item.updatecell(world)
+            chargesum += updatedcharge
+            nr.append(cell(item.state, updatedcharge, item.position))
         nextworld.append(nr)
+    print(chargesum)
     world = nextworld
   # Update.
   
   # Draw.
-    for row in world:
-        for h in row:
-            print(h.position, h.charge)
-            S = h.position[0] % 2
-            drawhex(((h.position[1] + .5*S)*25, h.position[0]*37.4), h.state, h.charge)
     pygame.display.flip()
     fpsClock.tick(fps)
+    time.sleep(1)
