@@ -11,7 +11,8 @@ import pygame
 import sys
 import time
 import random
-threshhold = 5
+import math
+threshhold = 2
 class cell:
     def __init__(self, state, charge, position):
         self.state = state
@@ -40,17 +41,17 @@ class cell:
         global threshhold
         if self.charge >= threshhold:
             return 0
-        for neighbor in neighbors:
-            if neighbor.state == "dendrite":
-                csum += neighbor.charge
-        charge = self.charge + csum
-        return charge
+        else:
+            for neighbor in neighbors:
+                if neighbor.state == "dendrite":
+                    csum += neighbor.charge
+            charge = self.charge + csum
+            return charge
 
     def dendrite(self, neighbors):
         csum = 0
         for neighbor in neighbors:
             if neighbor.state == "axon":
-                print("axon")
                 csum += neighbor.charge
         return csum
 
@@ -62,7 +63,7 @@ class cell:
                 if neighbor.charge >= threshhold:
                     activation = True
         if activation:
-            return 2
+            return 1
         else:
             return 0
 
@@ -84,7 +85,10 @@ def drawhex(co, state, charge):
     elif state == "body":
         g = brightness
     elif state == "axon":
-        b = brightness
+        if charge != 0:
+            b = 255
+        else:
+            b = 55
     else:
         r, g, b = 100, 100, 100
     x, y = co
@@ -102,32 +106,80 @@ nextworld = []
 for i in range(10):
     row = []
     for x in range(10):
-        row.append(cell(["void", "body", "dendrite", "axon"][random.randrange(0, 4)], random.randrange(0, 10), (x, i)))
+        row.append(cell("void", 0, (x, i)))
     world.append(row)
+
+paused = False
+
+def getnearest(position):
+    closest = 1000
+    a, b = 0, 0
+    tp = (0, 0)
+    for y in range(10):
+        for x in range(10):
+
+            S = y % 2
+            p = ((x + .5*S)*50 + 50, y*37.5 + 25)
+            dist = math.sqrt((p[1] - position[1])**2 + (p[0]-position[0])**2)
+            if dist < closest:
+                closest = dist
+                a, b = y, x
+                tp = p
+    print(position, tp)
+    return[b, a]
+
+
 while True:
-    chargesum = 0
-    nextworld = []
-    screen.fill((255, 255, 255))
-
-    for row in world:
-        for h in row:
-            S = h.position[0] % 2
-            drawhex(((h.position[1] + .5*S)*25, h.position[0]*37.4), h.state, h.charge)
-
     for event in pygame.event.get():
-        pass
+        if event.type == pygame.KEYDOWN:
+            print(event.key)
+            if event.key == pygame.K_p:
+                if paused:
+                    paused = False
+                else:
+                    paused = True
+            else:
+                nearest = getnearest(pygame.mouse.get_pos())
+                print(pygame.mouse.get_pos())
+                print(nearest)
+                match event.key:
+                    case pygame.K_0:
+                        world[nearest[0]][nearest[1]].state = "void"
+                    case pygame.K_1:
+                        world[nearest[0]][nearest[1]].state = "dendrite"
+                    case pygame.K_2:
+                        world[nearest[0]][nearest[1]].state = "body"
+                    case pygame.K_3:
+                        world[nearest[0]][nearest[1]].state = "axon"
+                    case pygame.K_q:
+                        world[nearest[0]][nearest[1]].charge += 1
+                    case pygame.K_w:
+                        world[nearest[0]][nearest[1]].charge -= 1
+
+
+    if not paused:
+        chargesum = 0
+        nextworld = []
+        screen.fill((255, 255, 255))
+
+        for row in world:
+            nr = []
+            for item in row:
+                updatedcharge = item.updatecell(world)
+                chargesum += updatedcharge
+                nr.append(cell(item.state, updatedcharge, item.position))
+            nextworld.append(nr)
+        print(chargesum)
+        world = nextworld
+        time.sleep(1)
+    # Update.
+    
+    # Draw.
     for row in world:
-        nr = []
-        for item in row:
-            updatedcharge = item.updatecell(world)
-            chargesum += updatedcharge
-            nr.append(cell(item.state, updatedcharge, item.position))
-        nextworld.append(nr)
-    print(chargesum)
-    world = nextworld
-  # Update.
-  
-  # Draw.
+            for h in row:
+                S = h.position[0] % 2
+                p = ((h.position[1] + .5*S)*25, h.position[0]*37.5)
+                drawhex(p, h.state, h.charge)
+                pygame.Surface.set_at(screen, (int(p[0])*2 + 50, int(p[1] + 25)), (255, 192, 1))
     pygame.display.flip()
     fpsClock.tick(fps)
-    time.sleep(1)
