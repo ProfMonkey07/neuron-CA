@@ -21,9 +21,9 @@ class cell:
     def updatecell(self, w):
         neighbors = []
         if self.position[0] % 2 == 0:
-            neighborcoords = [(1, 0), (-1, 0), (0, 1), (1, 1), (0, -1), (1, -1)]
+            neighborcoords = [(1, 0), (-1, 0), (0, 1), (-1, -1), (0, -1), (1, -1)]
         else:
-            neighborcoords = [(1, 0), (-1, 0), (-1, 1), (0, 1), (-1, -1), (0, -1)]
+            neighborcoords = [(1, 0), (-1, 0), (-1, 1), (0, 1), (1, 1), (0, -1)]
         for item in neighborcoords:
             if 0 < self.position[0] + item[0] < 10 and 0 < self.position[1] + item[1] < 10:
                 neighbors.append(w[self.position[1] + item[1]][self.position[0] + item[0]])
@@ -53,6 +53,9 @@ class cell:
         for neighbor in neighbors:
             if neighbor.state == "axon":
                 csum += neighbor.charge
+        if csum == 0:
+            for neighbor in neighbors:
+                print(self.position, neighbor.position, neighbor.state, neighbor.charge)
         return csum
 
     def axon(self, neighbors):
@@ -125,14 +128,12 @@ def getnearest(position):
                 closest = dist
                 a, b = y, x
                 tp = p
-    print(position, tp)
     return[b, a]
 
 
 while True:
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
-            print(event.key)
             if event.key == pygame.K_p:
                 if paused:
                     paused = False
@@ -140,8 +141,6 @@ while True:
                     paused = True
             else:
                 nearest = getnearest(pygame.mouse.get_pos())
-                print(pygame.mouse.get_pos())
-                print(nearest)
                 match event.key:
                     case pygame.K_0:
                         world[nearest[0]][nearest[1]].state = "void"
@@ -169,7 +168,6 @@ while True:
                 chargesum += updatedcharge
                 nr.append(cell(item.state, updatedcharge, item.position))
             nextworld.append(nr)
-        print(chargesum)
         world = nextworld
         time.sleep(1)
     # Update.
